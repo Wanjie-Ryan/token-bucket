@@ -1,0 +1,2 @@
+- Redis - Shared state store, every rate limiter instance will eventually hit.
+- Nginx (load balancer) - Spreads requests across N replicas.
