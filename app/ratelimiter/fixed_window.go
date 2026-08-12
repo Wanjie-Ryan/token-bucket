@@ -5,13 +5,18 @@ import (
 	"time"
 )
 
+// rate limiter tracks one window state per client. if user A and user B are both hitting the API, they need their own independent count and their own window boundary, user A maxing out their limit shouldn't affect user B at all.
 // state for one client's current window; how many requests they've made, and which window (identified by its start timestamp) the count belongs to.
 type window struct {
 	count       int
 	windowStart int64
 }
 
+// we need the window - the small, per-client unit. How many requests has this one specific person made, and in which window.
+// nothing else, it doesn't know about limits, doesn't know about other clients, doesn't know about locking.
+
 type FixedWindowLimiter struct {
+	// holds the shared rules (limit, interval), and a collection of window(s) one per client, so it can look up; "whats the state for this specific right now?"
 	mu       sync.Mutex
 	windows  map[string]*window
 	limit    int
@@ -46,7 +51,7 @@ func (l *FixedWindowLimiter) Allow(key string) (bool, int) {
 
 	// each request checks; does this client have a window at all yet, or is their stored window from an earlier time bucket than the one we're in right now?
 	// if either is true, a fresh window struct is created, count defaults to 0 and stored back into the map, otherwise the existing window keeps accumulating
-	
+
 	w, exists := l.windows[key]
 
 	if !exists || w.windowStart != currentWindow {
