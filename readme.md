@@ -41,3 +41,10 @@ What happens when Redis is slow or down — fail open vs fail closed — plus me
 ### Phase 7 — Dashboards & log correlation (planned)
 
 Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` so trace/span context flows into log fields and dashboards can correlate a log line back to a specific request's trace — request latency and per-function timing, end to end.
+
+### MUTEXES
+- A mutext (mutual exclusion lock) guarantees that only one goroutine can be inside a protected section of code at a time.
+- Everyone else who tries to enter has to wait their turn.
+
+
+![Mutex illustration](illustrations/mutex.png)
