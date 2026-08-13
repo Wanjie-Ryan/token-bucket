@@ -48,3 +48,8 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 
 
 ![Mutex illustration](illustrations/mutex.png)
+
+
+### K6
+- open source load testing tool, where you write test scripts in JS/TS to simulate real traffic against API
+- Fire a burst of concurrent requests at your rate limiter and watch what breaks.

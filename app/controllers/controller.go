@@ -11,12 +11,12 @@ import (
 )
 
 type Controller struct {
-	Limiter *ratelimiter.FixedWindowLimiter
+	FixedWindowLimiter *ratelimiter.FixedWindowLimiter
 }
 
 func NewController() *Controller {
 	return &Controller{
-		Limiter: ratelimiter.NewFixedWindowLimiter(5, time.Second),
+		FixedWindowLimiter: ratelimiter.NewFixedWindowLimiter(5, time.Second),
 	}
 }
 
@@ -29,14 +29,14 @@ type checkResponse struct {
 	Remaining int  `json:"remaining"`
 }
 
-func (ctl *Controller) Check(c echo.Context) error {
+func (ctl *Controller) CheckFixedWindow(c echo.Context) error {
 	var req checkRequest
 
 	if err := c.Bind(&req); err != nil || req.ClientKey == "" {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "client_key is required"})
 	}
 
-	allowed, remaining := ctl.Limiter.Allow(req.ClientKey)
+	allowed, remaining := ctl.FixedWindowLimiter.Allow(req.ClientKey)
 
 	return c.JSON(http.StatusOK, checkResponse{
 		Allowed:   allowed,

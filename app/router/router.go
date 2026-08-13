@@ -20,7 +20,7 @@ func (a *App) Initialize() {
 }
 
 func (a *App) registerRoutes() {
-	a.E.POST("/check", a.Controller.Check)
+	a.E.POST("/check/fixed-window", a.Controller.CheckFixedWindow)
 }
 
 func (a *App) Run() {
