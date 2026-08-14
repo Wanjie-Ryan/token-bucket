@@ -64,3 +64,20 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 - If requests for the same key arrived on at a time **(ideal world/scenario)** spaced out even slightly, this bug would never show up - each pair GET/SET would complete cleanly before the next one started, and the limiter would work correctly.
 - It only breaks when multiple requests check then write; windows windows overlap in time
 - This bug is dangerous in prod; it can pass every normal test and manual check, and only reveals itself the moment real concurrent traffic hits.
+
+## TOKEN BUCKET
+
+- Each client key gets a "bucket" holding some number of tokens, capped at a CAPACITY.
+- Tokens refill continuously at a fixed **refill_rate (tokens/second)**
+- A request costs 1 token: if the bucket has >=1, allow request, and deduct 1; otherwise deny.
+- Capacity governs how big a burst you can abosrb all at once; refill_rate governs the steady-state average once the busrt is spent.
+- Refill is computed lazily on read, at request time:
+- ## elapsed = now - last_refill AND tokens = min(capacity, tokens +elapsed \* refill_rate)
+- compute that, then decide allow/deny, then store the updated tokens and last_refill = now.
+- This is also why it doesn't have fixed-window boundary-busrt flow; there's no hard reset at a clock edge, tokens trickle back continously.
+
+## why LUA actually closes the race this time.
+
+- There was a bug between GET and SET - two separate round trips, each indivisually atomic; but not atomic together.
+- A lus script sent via EVAL doesn't have that gap; Redis runs the entire script - read state, do the math, decide, write state - as a single unit of work on its one execution thread.
+- No other command can interleave this, the "check" and the "act" stop being two ops and become one ops.
