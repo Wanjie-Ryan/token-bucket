@@ -43,13 +43,24 @@ What happens when Redis is slow or down — fail open vs fail closed — plus me
 Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` so trace/span context flows into log fields and dashboards can correlate a log line back to a specific request's trace — request latency and per-function timing, end to end.
 
 ### MUTEXES
+
 - A mutext (mutual exclusion lock) guarantees that only one goroutine can be inside a protected section of code at a time.
 - Everyone else who tries to enter has to wait their turn.
 
-
 ![Mutex illustration](illustrations/mutex.png)
 
-
 ### K6
+
 - open source load testing tool, where you write test scripts in JS/TS to simulate real traffic against API
 - Fire a burst of concurrent requests at your rate limiter and watch what breaks.
+
+## Naive-redis
+
+- The race condition does not exist in redis, redis itself is single threaded, and executes each command atomically, with no interleaving.
+- Race condition exists entirely in the code; the gap btn GET finishing and SET starting is where another goroutine's GET can sneak in.
+- Redis did what it was asked; we just asked it two separate, uncoordinated things instead of one atomic thing.
+- We fix this by introducing **LUA** which makes our check-and-write into a single atomic value, so there's no gap left to race into.
+
+- If requests for the same key arrived on at a time **(ideal world/scenario)** spaced out even slightly, this bug would never show up - each pair GET/SET would complete cleanly before the next one started, and the limiter would work correctly.
+- It only breaks when multiple requests check then write; windows windows overlap in time
+- This bug is dangerous in prod; it can pass every normal test and manual check, and only reveals itself the moment real concurrent traffic hits.

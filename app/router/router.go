@@ -4,7 +4,9 @@ import (
 	"log"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/Wanjie-Ryan/token-bucket/app/connections"
 	"github.com/Wanjie-Ryan/token-bucket/app/controllers"
 )
 
@@ -14,13 +16,16 @@ type App struct {
 }
 
 func (a *App) Initialize() {
+	connections.InitRedis()
 	a.E = echo.New()
+	a.E.Use(middleware.Recover())
 	a.Controller = controllers.NewController()
 	a.registerRoutes()
 }
 
 func (a *App) registerRoutes() {
 	a.E.POST("/check/fixed-window", a.Controller.CheckFixedWindow)
+	a.E.POST("/check/naive-redis", a.Controller.CheckNaiveRedis)
 }
 
 func (a *App) Run() {
