@@ -83,3 +83,21 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 - No other command can interleave this, the "check" and the "act" stop being two ops and become one ops.
 
 **Running K6 - k6 run k6-naive-redis-race.js**
+
+## Scaling running instances using Docker and NGINX as reverse proxy.
+
+- The purpose of a rate limiter is to know the total count across every instance for a given client, which is precisly the kind of state that can't live in any one instance's private memory once you've scaled out.
+- So can this Redis enhanced with LUA, can it survive an architectural change? Going from 1 process to N?
+
+**Purpose of NGINX**
+
+- Nginx sits in front of the 3 app containers as reverse proxy.
+
+1. Client sends a request to nginx :8080, not any app container directly, the app containers have no published host ports, so nginx is the only reachable entry point.
+2. For each incoming request, nginx picks one backend from the upstream list. With no algorithm specified, default is round-robin; request 1 -> app 1, request 2 -> app2, request 3 -> app3, request 4 -> app 1 again, cycling forever.
+
+**proxy_pass**
+
+- tells nginx: open a new connection to whichever backend was picked, forward the client's request to it, wait for that backend's response, then relay that response back to original client.
+- Client never knows which of the 3 actually handled it.
+- Selection is stateless per request - nginx isn't tracking "this client talked to app2 last time, keep sending it there". Every new request just gets the next name in the rotation, regardless of who's asking.
