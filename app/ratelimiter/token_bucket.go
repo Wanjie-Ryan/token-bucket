@@ -38,7 +38,8 @@ func (l *TokenBucketLimiter) Allow(key string) (bool, int) {
 	// the 3 trailing arguments; capacity, refillrate, now become the argv 1,2,3 in the exact order.
 
 	if err != nil {
-		return true, 0
+		return false, 0
+		// if redis fails, every request to this endpoint gets denied.
 	}
 
 	values := res.([]interface{})
