@@ -101,3 +101,20 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 - tells nginx: open a new connection to whichever backend was picked, forward the client's request to it, wait for that backend's response, then relay that response back to original client.
 - Client never knows which of the 3 actually handled it.
 - Selection is stateless per request - nginx isn't tracking "this client talked to app2 last time, keep sending it there". Every new request just gets the next name in the rotation, regardless of who's asking.
+
+## LOGGING AND METRICS
+
+## LOGS -> Kibana
+
+- Detailed, per-event record: at this exact moment, this request came in, took this long, returned this status.
+- Kibana is just a search/visualization UI, that sits on top of ElasticSearch, which is the actual storage and search engine.
+
+## Metrics -> Prometheus -> Grafana
+
+- Aggregated numbers overtime. "how many requests were allowed vs denied in the last 5 minutes" "whats p95 latency right now"
+- Prometheus is a pull-based metrics collector - it periodically scrapes a /metrics endpoint your app exposes and stores the numbers as a time series.
+- Grafana is the dahsboard layer on top - it queries prometheus and draws graph.
+
+## Uptime -> uptime kuma
+
+- Simplest of the 4, and independent of the 3. Its an external prober; it periodically hits a URL (nginx :8080/healthz) from outside the app and tracks "was it reachable" how fast did it respond, whats the uptime percentage overtime.
