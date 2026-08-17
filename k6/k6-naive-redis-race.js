@@ -19,7 +19,8 @@ export const options = {
 // the 20 concurrent requests are fighting over the same counter in redis, which is exactly the scenario that exposes the check-then-act race, two instances reading the same "current count" before either has written its update back.
 export default function () {
   const res = http.post(
-    "http://localhost:8081/check/naive-redis",
+    // "http://localhost:8081/check/naive-redis",
+    "http://localhost:8081/check/token-bucket",
     JSON.stringify({ client_key: "race-test" }),
     { headers: { "Content-Type": "application/json" } },
   );

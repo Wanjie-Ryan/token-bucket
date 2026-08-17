@@ -14,12 +14,14 @@ import (
 type Controller struct {
 	FixedWindowLimiter *ratelimiter.FixedWindowLimiter
 	NaiveRedisLimiter  ratelimiter.Limiter
+	TokenBucketLimiter ratelimiter.Limiter
 }
 
 func NewController() *Controller {
 	return &Controller{
 		FixedWindowLimiter: ratelimiter.NewFixedWindowLimiter(5, time.Second),
 		NaiveRedisLimiter:  ratelimiter.NewNaiveRedisLimiterClient(connections.RedisClient(), 5, time.Second),
+		TokenBucketLimiter: ratelimiter.NewTokenBucketLimiter(connections.RedisClient(), 5, 5.0),
 	}
 }
 
@@ -56,6 +58,20 @@ func (ctl *Controller) CheckNaiveRedis(c echo.Context) error {
 	}
 
 	allowed, remaining := ctl.NaiveRedisLimiter.Allow(req.ClientKey)
+
+	return c.JSON(http.StatusOK, checkResponse{
+		Allowed:   allowed,
+		Remaining: remaining,
+	})
+}
+
+func (ctl *Controller) CheckTokenBucket(c echo.Context) error {
+	var req checkRequest
+	if err := c.Bind(&req); err != nil || req.ClientKey == "" {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "client_key is required"})
+	}
+
+	allowed, remaining := ctl.TokenBucketLimiter.Allow(req.ClientKey)
 
 	return c.JSON(http.StatusOK, checkResponse{
 		Allowed:   allowed,

@@ -26,6 +26,7 @@ func (a *App) Initialize() {
 func (a *App) registerRoutes() {
 	a.E.POST("/check/fixed-window", a.Controller.CheckFixedWindow)
 	a.E.POST("/check/naive-redis", a.Controller.CheckNaiveRedis)
+	a.E.POST("/check/token-bucket", a.Controller.CheckTokenBucket)
 }
 
 func (a *App) Run() {

@@ -81,3 +81,5 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 - There was a bug between GET and SET - two separate round trips, each indivisually atomic; but not atomic together.
 - A lus script sent via EVAL doesn't have that gap; Redis runs the entire script - read state, do the math, decide, write state - as a single unit of work on its one execution thread.
 - No other command can interleave this, the "check" and the "act" stop being two ops and become one ops.
+
+**Running K6 - k6 run k6-naive-redis-race.js**
