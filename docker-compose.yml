@@ -6,7 +6,37 @@ services:
       - "6379:6379"
     networks:
       - rl-network
-  
+  app1:
+    build: .
+    container_name: rl_app1
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_port=6379
+    networks:
+      - rl-network
+    depends_on:
+      - redis
+  app2:
+    build: .
+    container_name: rl_app2
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_port=6379
+    networks:
+      - rl-network
+    depends_on:
+      - redis
+
+  app3:
+    build: .
+    container_name: rl_app3
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_port=6379
+    networks:
+      - rl-network
+    depends_on:
+      - redis
   nginx:
     image: nginx:alpine
     container_name: rl_nginx
@@ -20,7 +50,9 @@ services:
     networks:
       - rl-network
     depends_on:
-      - redis
+      - app1
+      - app2
+      - app3
 
 networks:
   rl-network:

@@ -26,7 +26,9 @@ func InitRedis() {
 		}
 
 		redisClient = redis.NewClient(&redis.Options{
-			Addr: host + ":" + port,
+			Addr:         host + ":" + port,
+			PoolSize:     100,
+			MinIdleConns: 10,
 		})
 	})
 }

@@ -20,12 +20,13 @@ export const options = {
 export default function () {
   const res = http.post(
     // "http://localhost:8081/check/naive-redis",
-    "http://localhost:8081/check/token-bucket",
+    // "http://localhost:8081/check/token-bucket",
+    "http://localhost:8080/check/fixed-window",
     JSON.stringify({ client_key: "race-test" }),
     { headers: { "Content-Type": "application/json" } },
   );
 
-  console.log("we hit here, and this is the response ==>>", res);
+  // console.log("we hit here, and this is the response ==>>", res);
   const body = JSON.parse(res.body);
   if (body.allowed) {
     allowedCount.add(1);
