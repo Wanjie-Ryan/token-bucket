@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/sirupsen/logrus"
 )
 
 //embed is a compiler directive, special comment that tells Go compiler, "read this file at build time, and bake its content into this variable"
@@ -29,8 +30,8 @@ func NewTokenBucketLimiter(client *redis.Client, capacity int, refillRate float6
 	}
 }
 
-func (l *TokenBucketLimiter) Allow(key string) (bool, int) {
-	ctx := context.Background()
+func (l *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, int) {
+	// ctx := context.Background()
 	redisKey := "ratelimit:token-bucket:" + key
 	now := float64(time.Now().UnixNano()) / 1e9
 
@@ -38,12 +39,24 @@ func (l *TokenBucketLimiter) Allow(key string) (bool, int) {
 	// the 3 trailing arguments; capacity, refillrate, now become the argv 1,2,3 in the exact order.
 
 	if err != nil {
+
+		checksTotal.WithLabelValues("token-bucket", "redis_error").Inc()
+		logrus.WithContext(ctx).WithFields(logrus.Fields{
+			"client_key": key,
+			"error":      err.Error(),
+		}).Error("redis unreachable, failing closed")
 		return false, 0
 		// if redis fails, every request to this endpoint gets denied.
+
 	}
 
 	values := res.([]interface{})
 	allowed := values[0].(int64) == 1
 	remaining := int(values[1].(int64))
+	result := "denied"
+	if allowed {
+		result = "allowed"
+	}
+	checksTotal.WithLabelValues("token-bucket", result).Inc()
 	return allowed, remaining
 }

@@ -1,6 +1,7 @@
 package ratelimiter
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -38,7 +39,7 @@ func NewFixedWindowLimiter(limit int, interval time.Duration) *FixedWindowLimite
 // Allow reports whether the request for key is allowed under the current
 // window, and how many requests remain that window if so
 
-func (l *FixedWindowLimiter) Allow(key string) (bool, int) {
+func (l *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, int) {
 	// first thing that happens is to lock the mutext, and schedule the unlock to happen automatically when the function returns
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -61,10 +62,12 @@ func (l *FixedWindowLimiter) Allow(key string) (bool, int) {
 	}
 
 	if w.count >= l.limit {
+		checksTotal.WithLabelValues("fixed-window", "denied").Inc()
 		return false, 0
 	}
 
 	w.count++
+	checksTotal.WithLabelValues("fixed-window", "allowed").Inc()
 	return true, l.limit - w.count
 
 }

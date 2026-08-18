@@ -18,29 +18,46 @@ Public contract: `POST /check` with a client key, returns `{allowed: bool, remai
 
 Verified: `curl http://localhost:8080/healthz` → `nginx up`, `docker exec rl_redis redis-cli ping` → `PONG`.
 
-### Phase 2 — Rate limiter service skeleton (in progress)
+### Phase 2 — Rate limiter service skeleton ✅ done
 
-Single instance, in-memory, fixed-window counter. Goal is proving the HTTP shape — Echo, the `/check` endpoint, the `App` struct wiring — works, before Redis or the real token-bucket algorithm enter the picture.
+Single instance, in-memory, fixed-window counter. Proved the HTTP shape — Echo, the `App` struct wiring, a `Limiter` interface every algorithm implements — before Redis or the real token-bucket algorithm entered the picture. Lives on at `POST /check/fixed-window`, never replaced.
 
-### Phase 3 — Naive Redis integration (planned)
+### Phase 3 — Naive Redis integration ✅ done
 
-Read-then-write against Redis, deliberately not atomic. Load test it to trigger the check-then-act race condition and actually watch it happen.
+Read-then-write against Redis, deliberately not atomic. A 20-request k6 burst against a limit of 5 let **all 20** through — the check-then-act race, caused by the gap between `GET` and `SET`, not by Redis itself (Redis is single-threaded, every individual command is atomic). Lives on at `POST /check/naive-redis`.
 
-### Phase 4 — Redis Lua script fix (planned)
+### Phase 4 — Redis Lua script fix ✅ done
 
-Token bucket algorithm executed atomically inside a Lua script, replacing the naive check-then-act from Phase 3. Lua scripts run single-threaded on Redis with no interleaving — that's what closes the race.
+Token bucket algorithm executed atomically inside a Lua script (`app/ratelimiter/scripts/token_bucket.lua`), replacing the naive check-then-act. Same 20-request burst now lands on exactly `5` allowed, deterministically, every run — atomicity closes the race completely rather than just reducing it. Lives on at `POST /check/token-bucket`.
 
-### Phase 5 — Multi-instance behind nginx (planned)
+### Phase 5 — Multi-instance behind nginx ✅ done
 
-Multiple rate limiter replicas wired into `docker-compose`, behind nginx. Load test across all of them to prove the limit holds globally, not per-instance.
+Three named replicas (`app1`/`app2`/`app3`), nginx now doing real round-robin `proxy_pass` load balancing instead of the Phase 1 stub, no app container ports published — nginx is the only reachable entry point. Proved the payoff directly: the same burst test through nginx let ~15 through on `/check/fixed-window` (in-memory state, private per replica) but held at exactly `5` on `/check/token-bucket` (shared Redis state, atomic regardless of which replica handled the request).
 
-### Phase 6 — Failure modes & observability (planned)
+### Phase 6 — Failure modes ✅ done
 
-What happens when Redis is slow or down — fail open vs fail closed — plus metrics on allow/deny counts.
+Decided fail-closed (deny requests) when Redis is unreachable, over fail-open — informed by real production experience where uncontrolled Redis outages caused panics elsewhere. Distinguished a deliberate fail-closed *policy* from an accidental fail-*crashed* bug (an unhandled panic, like the earlier missing-`InitRedis()` bug) — `middleware.Recover()` guards against the latter regardless of which policy is chosen.
 
-### Phase 7 — Dashboards & log correlation (planned)
+### Phase 7 — Dashboards & log correlation ✅ done
 
-Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` so trace/span context flows into log fields and dashboards can correlate a log line back to a specific request's trace — request latency and per-function timing, end to end.
+- **Structured logging** — OpenTelemetry tracer (local ID generation, no exporter) + `logrus.WithContext` + a `RequestLogger` middleware logging every request with `trace_id`/`span_id`/`status`/`latency_ms`, mirroring identity-service's `FullTransactionLogger` pattern.
+- **Metrics** — `echoprometheus` for automatic HTTP metrics, plus a custom `rate_limiter_checks_total{limiter, result}` counter tracking allowed/denied/redis_error per algorithm, exposed at `/metrics`.
+- **Prometheus + Grafana** — Prometheus scrapes each replica's `/metrics` directly (never through nginx — metrics are per-process, same "no shared memory" lesson as Phase 2/5 showing up again), Grafana's Prometheus datasource auto-provisioned via `grafana/provisioning/datasources/`, first dashboard panel built querying `sum(rate_limiter_checks_total) by (result)`.
+- **Uptime Kuma** — external HTTP prober hitting `http://nginx/healthz` every 30s, tracking uptime % and response time, independent of the metrics/logs pipeline.
+- **Elasticsearch + Kibana + Filebeat** — Filebeat autodiscovers every container via the Docker socket and an unconditional template (the "hints" autodiscover approach didn't reliably generate configs, switched to a plain template match), ships logs into Elasticsearch, searchable in Kibana's Discover view.
+
+## Key lessons this project actually taught
+
+- **In-memory rate limiting has a visibility problem**, not an atomicity problem — each replica's own memory can't see another replica's traffic. Fixed by moving state to Redis.
+- **Shared state introduces a different problem: atomicity.** Redis itself is single-threaded and atomic per-command; the danger is in *our own code* doing multiple uncoordinated commands (check, then act) with a gap between them that concurrent requests can race into.
+- **Lua scripting closes that gap completely**, not partially — the entire check-and-write runs as one unit of work on Redis's single execution thread, so the fix is deterministic, not merely "less likely to fail."
+- **Horizontal scaling (nginx + N replicas) is exactly the scenario that exposes both problems at once** — and is also the proof that the Redis+Lua fix actually works, since correctness held regardless of which replica handled a given request.
+- **Fail open vs fail closed is a real design decision, not a default** — and is separate from making sure failures are *handled* at all (a panic is neither "open" nor "closed," it's a bug).
+- **Metrics are per-process, same as in-memory rate-limiter state was** — scraping through a load balancer gives inconsistent results; Prometheus scrapes every replica directly and aggregates in queries instead.
+
+## Repo workflow
+
+`master` is protected — no direct pushes, all changes go through a PR from `dev`. Core functionality (phases 1–7) landed on `master` before this rule was added.
 
 ### MUTEXES
 
@@ -107,7 +124,7 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 ## LOGS -> Kibana
 
 - Detailed, per-event record: at this exact moment, this request came in, took this long, returned this status.
-- Kibana is just a search/visualization UI, that sits on top of ElasticSearch, which is the actual storage and search engine.
+- Kibana is just a search/visualization UI, that sits on top of ElasticSearch which is a storage, which is the actual storage and search engine.
 
 ## Metrics -> Prometheus -> Grafana
 
@@ -118,3 +135,24 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 ## Uptime -> uptime kuma
 
 - Simplest of the 4, and independent of the 3. Its an external prober; it periodically hits a URL (nginx :8080/healthz) from outside the app and tracks "was it reachable" how fast did it respond, whats the uptime percentage overtime.
+- Used for availability monitoring; is this URL reachable right now? how fast did it respond, and whats the uptime % been over time.
+- You can wire uptime to alert you when service is down
+
+- /etc/grafana/provisioning/datasources/ — for data source definitions
+- /etc/grafana/provisioning/dashboards/ — for dashboard definitions
+- /etc/grafana/provisioning/alerting/ — for alert rules
+
+
+## DB Backup
+- static, point-in-time snapshot of your data.
+- Take it now, and it captures exactly what existed at this moment, nothing that happens after is included.
+- Its whole purpose if recovery from mistakes; someone runs a bad DELETE, a migration goes wrong, disk corrupts, you restore from before it happened.
+
+
+## DB Replication
+- Live, continuously-updated copy of your DB running on a separate instance, kept in near real time sync by streaming every change from primary to one or more replicas.
+- Its purpose is availability and scaling, if the primary dies, promote a replica and keep serving traffic; or point read-heavy queries at a replica to take load off the primary.
+
+- Replication is not a backup. If you accidentally DROP TABLE on the primary, that command replicates too, the replica drops the exact same table. Replication protects against server dying.
+
+- 

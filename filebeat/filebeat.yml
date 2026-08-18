@@ -1,0 +1,11 @@
+filebeat.autodiscover:
+  providers:
+  - type: docker
+    templates:
+      - config:
+          - type: container
+            paths:
+              - /var/lib/docker/containers/${data.docker.container.id}/*.log
+
+output.elasticsearch:
+  hosts: [ "elasticsearch:9200" ]

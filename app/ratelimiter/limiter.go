@@ -1,5 +1,7 @@
 package ratelimiter
 
+import "context"
+
 type Limiter interface {
-	Allow(Key string) (bool, int)
+	Allow(ctx context.Context, Key string) (bool, int)
 }
