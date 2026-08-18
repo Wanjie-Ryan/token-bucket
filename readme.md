@@ -141,3 +141,18 @@ Decided fail-closed (deny requests) when Redis is unreachable, over fail-open �
 - /etc/grafana/provisioning/datasources/ — for data source definitions
 - /etc/grafana/provisioning/dashboards/ — for dashboard definitions
 - /etc/grafana/provisioning/alerting/ — for alert rules
+
+
+## DB Backup
+- static, point-in-time snapshot of your data.
+- Take it now, and it captures exactly what existed at this moment, nothing that happens after is included.
+- Its whole purpose if recovery from mistakes; someone runs a bad DELETE, a migration goes wrong, disk corrupts, you restore from before it happened.
+
+
+## DB Replication
+- Live, continuously-updated copy of your DB running on a separate instance, kept in near real time sync by streaming every change from primary to one or more replicas.
+- Its purpose is availability and scaling, if the primary dies, promote a replica and keep serving traffic; or point read-heavy queries at a replica to take load off the primary.
+
+- Replication is not a backup. If you accidentally DROP TABLE on the primary, that command replicates too, the replica drops the exact same table. Replication protects against server dying.
+
+- 
