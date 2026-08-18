@@ -24,8 +24,8 @@ func NewNaiveRedisLimiterClient(client *redis.Client, limit int, window time.Dur
 
 // Allow is not atomic; get and set are two separate round trips with nothing preventing another groutine's GET from landing in btn
 // the gap is the race this phase exists to expose.
-func (l *NaiveRedisLimiter) Allow(key string) (bool, int) {
-	ctx := context.Background()
+func (l *NaiveRedisLimiter) Allow(ctx context.Context, key string) (bool, int) {
+	// ctx := context.Background()
 	redisKey := "ratelimit:" + key
 
 	count := 0

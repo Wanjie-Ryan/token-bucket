@@ -8,6 +8,7 @@ import (
 
 	"github.com/Wanjie-Ryan/token-bucket/app/connections"
 	"github.com/Wanjie-Ryan/token-bucket/app/controllers"
+	"github.com/Wanjie-Ryan/token-bucket/app/tracing"
 )
 
 type App struct {
@@ -16,6 +17,7 @@ type App struct {
 }
 
 func (a *App) Initialize() {
+	tracing.Init()
 	connections.InitRedis()
 	a.E = echo.New()
 	a.E.Use(middleware.Recover())

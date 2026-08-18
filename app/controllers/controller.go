@@ -41,7 +41,7 @@ func (ctl *Controller) CheckFixedWindow(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "client_key is required"})
 	}
 
-	allowed, remaining := ctl.FixedWindowLimiter.Allow(req.ClientKey)
+	allowed, remaining := ctl.FixedWindowLimiter.Allow(c.Request().Context(), req.ClientKey)
 
 	return c.JSON(http.StatusOK, checkResponse{
 		Allowed:   allowed,
@@ -57,7 +57,7 @@ func (ctl *Controller) CheckNaiveRedis(c echo.Context) error {
 
 	}
 
-	allowed, remaining := ctl.NaiveRedisLimiter.Allow(req.ClientKey)
+	allowed, remaining := ctl.NaiveRedisLimiter.Allow(c.Request().Context(), req.ClientKey)
 
 	return c.JSON(http.StatusOK, checkResponse{
 		Allowed:   allowed,
@@ -71,7 +71,7 @@ func (ctl *Controller) CheckTokenBucket(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "client_key is required"})
 	}
 
-	allowed, remaining := ctl.TokenBucketLimiter.Allow(req.ClientKey)
+	allowed, remaining := ctl.TokenBucketLimiter.Allow(c.Request().Context(), req.ClientKey)
 
 	return c.JSON(http.StatusOK, checkResponse{
 		Allowed:   allowed,
