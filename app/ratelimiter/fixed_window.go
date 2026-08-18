@@ -62,10 +62,12 @@ func (l *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, int) 
 	}
 
 	if w.count >= l.limit {
+		checksTotal.WithLabelValues("fixed-window", "denied").Inc()
 		return false, 0
 	}
 
 	w.count++
+	checksTotal.WithLabelValues("fixed-window", "allowed").Inc()
 	return true, l.limit - w.count
 
 }

@@ -40,6 +40,7 @@ func (l *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, int) 
 
 	if err != nil {
 
+		checksTotal.WithLabelValues("token-bucket", "redis_error").Inc()
 		logrus.WithContext(ctx).WithFields(logrus.Fields{
 			"client_key": key,
 			"error":      err.Error(),
@@ -52,5 +53,10 @@ func (l *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, int) 
 	values := res.([]interface{})
 	allowed := values[0].(int64) == 1
 	remaining := int(values[1].(int64))
+	result := "denied"
+	if allowed {
+		result = "allowed"
+	}
+	checksTotal.WithLabelValues("token-bucket", result).Inc()
 	return allowed, remaining
 }

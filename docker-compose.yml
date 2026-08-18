@@ -53,6 +53,33 @@ services:
       - app1
       - app2
       - app3
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rl_prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - rl-network
+    depends_on:
+      - app1
+      - app2
+      - app3
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rl_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - rl-network
+    depends_on:
+      - prometheus
 
 networks:
   rl-network:

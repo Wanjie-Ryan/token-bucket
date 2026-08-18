@@ -33,14 +33,19 @@ func (l *NaiveRedisLimiter) Allow(ctx context.Context, key string) (bool, int) {
 	if err == nil {
 		count = val
 	} else if err != redis.Nil {
+		checksTotal.WithLabelValues("naive-redis", "redis-error").Inc()
 		return true, 0
 	}
 
 	if count >= l.limit {
+		checksTotal.WithLabelValues("naive-redis", "denied").Inc()
+
 		return false, 0
 	}
 
 	newCount := count + 1
 	l.client.Set(ctx, redisKey, newCount, l.window)
+	checksTotal.WithLabelValues("naive-redis", "allowed").Inc()
+
 	return true, l.limit - newCount
 }

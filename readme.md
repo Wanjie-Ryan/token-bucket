@@ -118,3 +118,8 @@ Grafana, Kibana, and Uptime Kuma integration. Logging via `logrus.WithContext` s
 ## Uptime -> uptime kuma
 
 - Simplest of the 4, and independent of the 3. Its an external prober; it periodically hits a URL (nginx :8080/healthz) from outside the app and tracks "was it reachable" how fast did it respond, whats the uptime percentage overtime.
+
+
+- /etc/grafana/provisioning/datasources/ — for data source definitions
+- /etc/grafana/provisioning/dashboards/ — for dashboard definitions
+- /etc/grafana/provisioning/alerting/ — for alert rules
