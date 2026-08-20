@@ -39,6 +39,7 @@ func (ctl *Controller) CheckFixedWindow(c echo.Context) error {
 
 	if err := c.Bind(&req); err != nil || req.ClientKey == "" {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "client_key is required"})
+		// finish the function
 	}
 
 	allowed, remaining := ctl.FixedWindowLimiter.Allow(c.Request().Context(), req.ClientKey)
