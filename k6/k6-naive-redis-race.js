@@ -3,6 +3,7 @@ import { Counter } from "k6/metrics";
 // counter is a K6 metric that just increments, and its being created via the allowed_count.
 
 const allowedCount = new Counter("allowed_count");
+console.log(allowedCount)
 
 export const options = {
   scenarios: {
