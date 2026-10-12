@@ -41,7 +41,7 @@ services:
     image: nginx:alpine
     container_name: rl_nginx
     ports:
-      - "8080:80"
+      - "8082:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       # the official nginx:alpine image ships with its own default nginx.conf baked into the image, which serves as a placeholder welcome page.
